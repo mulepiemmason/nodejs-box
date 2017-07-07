@@ -14,8 +14,6 @@
 
 
 # Make /opt directory owned by vagrant user
-echo "Current User: "
-whoami
 sudo chown ubuntu:ubuntu /opt/
 
 ### Update the system
@@ -90,26 +88,30 @@ sudo systemctl status redis
 
 # Download the binary
 echo " Installing NodeJS"
-wget -q https://nodejs.org/dist/v6.11.0/node-v6.11.0-linux-x64.tar.xz -O /tmp/node-v6.11.0-linux-x64.tar.xz
-echo "NodeJS download completed"
+
+# wget -q https://nodejs.org/dist/v6.11.0/node-v6.11.0-linux-x64.tar.xz -O /tmp/node-v6.11.0-linux-x64.tar.xz
+# echo "NodeJS download completed"
 # Unpack it
-cd /tmp
-tar -xvf /tmp/node-v6.11.0-linux-x64.tar.xz
-mv /tmp/node-v6.11.0-linux-x64 /opt/node-v6.11.0-linux-x64
-ln -s /opt/node-v6.11.0-linux-x64 /opt/nodejs
+# cd /tmp
+# tar -xvf /tmp/node-v6.11.0-linux-x64.tar.xz
+# mv /tmp/node-v6.11.0-linux-x64 /opt/node-v6.11.0-linux-x64
+# ln -s /opt/node-v6.11.0-linux-x64 /opt/nodejs
 
 # Set the node_path
-export NODE_PATH=/opt/nodejs/lib/node_modules
-export NODE_PATH=$NODE_PATH:/opt/dev/node_modules
-export NODE_PATH=$NODE_PATH:/opt/dev/lib/node_modules
-export NODE_PATH=$NODE_PATH:/usr/local/lib/node_modules
+# export NODE_PATH=/opt/nodejs/lib/node_modules
+# export NODE_PATH=$NODE_PATH:/opt/dev/node_modules
+# export NODE_PATH=$NODE_PATH:/opt/dev/lib/node_modules
+# export NODE_PATH=$NODE_PATH:/usr/local/lib/node_modules
 
 # Install global Node dependencies
-/opt/nodejs/bin/npm install -g n
+# /opt/nodejs/bin/npm install -g n
 
-/opt/nodejs/bin/npm config set loglevel http
+# /opt/nodejs/bin/npm config set loglevel http
+# which nodejs
+# ln -s /usr/bin/nodejs /usr/bin/node
 
-sudo ln -s "$(which nodejs)" /usr/local/bin/node
+curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
 # TODO: Install cloud9 IDE
 
@@ -117,44 +119,11 @@ sudo ln -s "$(which nodejs)" /usr/local/bin/node
 ### MongoDB ###
 echo "Installing and setting up MongoDB"
 
-# Download it
-# NOTE: Always check online for the latest version and change respectively
-wget -q https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.6.tgz -O /tmp/mongodb-linux-x86_64-ubuntu1604-3.4.6.tgz
-
-# Create mongo user and group
-sudo groupadd -g 550 mongodb
-sudo useradd -g mongodb -u 550 -c "MongoDB Database Server" -M -s /sbin/nologin mongodb
-
-# Unpack it and move to /opt directory
-cd /tmp
-tar -zxvf mongodb-linux-x86_64-ubuntu1604-3.4.6.tgz
-mv /tmp/mongodb-linux-x86_64-ubuntu1604-3.4.6 /opt
-ln -s /opt/mongodb-linux-x86_64-ubuntu1604-3.4.6 /opt/mongodb
-
-# Create the directories
-mkdir -p /opt/mongodb/data
-mkdir -p /opt/mongodb/etc
-mkdir -p /opt/mongodb/log
-mkdir -p /opt/mongodb/run
-
-# Set permissions:
-sudo chown mongodb /opt/mongodb/data
-sudo chown mongodb /opt/mongodb/log
-sudo chown mongodb /opt/mongodb/run
-
-# Create the config file
-printf "port = 27017\nlogpath=/opt/mongodb/log/mongodb.log\nfork = true\ndbpath=/opt/mongodb/data\npidfilepath=/opt/mongodb/run/mongodb.pid\nnojournal=true" > /opt/mongodb/etc/mongodb.conf
-
-# Create the init.d file
-printf '#!/bin/bash\n\nControls the main MongoDB server daemon "mongod"\n### END INIT INFO\n\n\npid_file="/opt/mongodb/run/mongodb.pid"\n\n\n# abort if not being ran as root\nif [ "${UID}" != "0" ] ; then\n        echo "you must be root"\n        exit 20\nfi\n\n\nstatus() {\n        # read pid file, return if file does not exist or is empty\n        if [ -f "$pid_file" ] ; then\n                read pid < "$pid_file"\n                if [ -z "${pid}" ] ; then\n                        # not running (empty pid file)\n                        return 1\n                fi\n        else\n                # not running (no pid file)\n                return 2\n        fi\n\n        # pid file exists, check if it is stale\n        if [ -d "/proc/${pid}" ]; then\n                # it is running (pid file is valid)\n                return 0\n        else\n                # not running (stale pid file)\n                return 3\n        fi\n}\n\nshow_status() {\n       # get the status\n        status\n\n        case "$?" in\n      0)\n            echo "running (pid ${pid})"\n           return 0\n          ;;\n        1)\n            echo "not running (empty pid file)"\n           return 1\n          ;;\n        2)\n            echo "not running (no pid file)"\n          return 2\n          ;;\n        3)\n            echo "not running (stale pid file)"\n           return 3\n          ;;\n        *)\n            # should never get here\n           echo "could not get status"\n           exit 10\n   esac\n}\n\nstart() {\n  # return if it is already running\n if ( status ) ; then\n      echo "already running"\n        return 1\n  fi\n\n  # start it\n    echo "Starting MongoDB"\n   sudo /bin/bash -c "/opt/mongodb/bin/mongod --quiet -f /opt/mongodb/etc/mongodb.conf run"\n}\n\nstop() {\n   # return if it is not running\n if ( ! status ) ; then\n        echo "already stopped"\n        return 1\n  fi\n\n  # stop it\n # call status again to get the pid\n    status\n    echo "Stopping MongoDB (killing ${pid})"\n  kill "${pid}"\n}\n\n\ncase "$1" in\n    status)\n       show_status\n       ;;\n    start)\n        start\n     ;;\n    stop)\n     stop\n      ;;\n    *)\n        echo $"Usage: $0 {start|stop|status}"\n     exit 100\nesac\n\nexit $?\n\n' > /opt/mongodb/etc/init-script
-chmod 755 /opt/mongodb/etc/init-script
-
-# Register the init.d file
-sudo update-rc.d mongodb defaults
-
-# Start MongoDB
-sudo service mongodb start
-
+sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
+echo "deb [ arch=amd64,arm64 ] http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.4.list
+sudo apt-get update
+sudo apt-get install -y mongodb-org
+sudo service mongod start
 
 ### Add binaries to path ###
 
